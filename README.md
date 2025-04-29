@@ -1,0 +1,2 @@
+# Jhw_python_CDCL_SAT_solver
+一个python实现的基于CDCL的SAT求解器
