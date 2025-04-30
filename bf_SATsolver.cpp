@@ -9,47 +9,35 @@ using namespace std;
 
 // 表示一个SAT问题
 struct SATproblem {
-    int numVars;                       // 变量数
-    vector<vector<int>> clauses;       // 子句列表
+    int numVars;                       
+    vector<vector<int>> clauses;       
 };
 
-// 从DIMACS格式解析SAT问题
+/**
+ * 从DIMACS格式解析SAT问题
+ * 假设输入可能有空子句，但不会有其他不规范情况
+ */
 SATproblem parseDIMACS() {
     SATproblem problem;
-    problem.numVars = 0;  // 初始化为0，用于稳健性检查
+    problem.numVars = 0;
     string line;
     int numClauses = 0;
-    int clausesRead = 0;
     bool headerFound = false;
-    bool hasError = false;  // 添加错误标记
     
-    // 解析头部和子句
     while (getline(cin, line)) {
         if (line.empty()) continue;
         
         if (line[0] == 'c') {
-            // 注释行，忽略
-            continue;
+            continue; // 注释行
         }
         else if (line[0] == 'p') {
-            // 问题描述行
             istringstream iss(line);
             string p, cnf;
             iss >> p >> cnf >> problem.numVars >> numClauses;
-            
-            if (iss.fail() || problem.numVars <= 0 || numClauses < 0) {
-                cerr << "ERROR: Invalid DIMACS header format" << endl;
-                problem.numVars = 0;
-                hasError = true;
-                return problem;
-            }
             headerFound = true;
         }
         else {
-            // 子句行
-            if (!headerFound) {
-                continue; // 跳过在header之前的非注释行
-            }
+            if (!headerFound) continue;
             
             istringstream iss(line);
             vector<int> clause;
@@ -57,16 +45,9 @@ SATproblem parseDIMACS() {
             while (iss >> lit && lit != 0) {
                 int var = abs(lit);
                 if (var > problem.numVars) {
-                    problem.numVars = var; // 自动扩展变量数
+                    problem.numVars = var;
                 }
                 clause.push_back(lit);
-            }
-            
-            // 检查是否是空子句
-            if (clause.empty()) {
-                hasError = true;
-                problem.numVars = -1;  // 标记错误
-                return problem;
             }
             
             // 移除重复文字并检查互补文字
@@ -84,35 +65,17 @@ SATproblem parseDIMACS() {
             
             if (!tautology) {
                 problem.clauses.push_back(clause);
-                clausesRead++;
-            }
-            
-            if (clausesRead >= numClauses && numClauses > 0) {
-                break;
             }
         }
-    }
-    
-    // 检查是否有空子句
-    for (const auto& clause : problem.clauses) {
-        if (clause.empty()) {
-            hasError = true;
-            cerr << "ERROR: Empty clause detected" << endl;
-            problem.numVars = -1;  // 标记错误
-            return problem;
-        }
-    }
-    
-    // 检查是否解析了完整的问题
-    if (!headerFound || (numClauses > 0 && clausesRead < numClauses)) {
-        cerr << "ERROR: Incomplete problem specification" << endl;
-        problem.numVars = -1;  // 标记错误
     }
     
     return problem;
 }
 
-// 检查当前赋值是否导致某个子句冲突
+/**
+ * 检查当前赋值是否导致某个子句冲突
+ * 如果有任何子句中的所有文字都不满足，则返回true
+ */
 bool checkConflict(const SATproblem& problem, const vector<int>& assignment) {
     for (const auto& clause : problem.clauses) {
         bool satisfied = false;
@@ -147,7 +110,10 @@ bool checkConflict(const SATproblem& problem, const vector<int>& assignment) {
     return false;  // 没有冲突
 }
 
-// 寻找单子句（只有一个未赋值的文字）
+/**
+ * 寻找单子句（只有一个未赋值的文字）
+ * 返回所有单子句中的文字列表
+ */
 vector<int> findUnitClauses(const SATproblem& problem, const vector<int>& assignment) {
     vector<int> unitLiterals;
     
@@ -166,7 +132,6 @@ vector<int> findUnitClauses(const SATproblem& problem, const vector<int>& assign
             
             if (value == 0) {
                 if (unassignedLit != 0) {
-                    // 多于一个未赋值文字，不是单子句
                     unassignedLit = 0;
                     break;
                 }
@@ -182,17 +147,18 @@ vector<int> findUnitClauses(const SATproblem& problem, const vector<int>& assign
     return unitLiterals;
 }
 
-// 寻找纯文字（在所有未满足子句中只以一种极性出现的文字）
+/**
+ * 寻找纯文字（在所有未满足子句中只以一种极性出现的文字）
+ * 返回所有纯文字列表
+ */
 vector<int> findPureLiterals(const SATproblem& problem, const vector<int>& assignment) {
     vector<bool> posAppears(problem.numVars + 1, false);
     vector<bool> negAppears(problem.numVars + 1, false);
     vector<int> pureLiterals;
     
-    // 检查每个未满足子句中未赋值文字的极性
     for (const auto& clause : problem.clauses) {
         bool satisfied = false;
         
-        // 首先检查子句是否已满足
         for (int lit : clause) {
             int var = abs(lit);
             int value = assignment[var-1];
@@ -203,13 +169,12 @@ vector<int> findPureLiterals(const SATproblem& problem, const vector<int>& assig
             }
         }
         
-        // 如果子句未满足，检查未赋值文字
         if (!satisfied) {
             for (int lit : clause) {
                 int var = abs(lit);
                 int value = assignment[var-1];
                 
-                if (value == 0) { // 仅考虑未赋值文字
+                if (value == 0) {
                     if (lit > 0) {
                         posAppears[var] = true;
                     } else {
@@ -220,7 +185,6 @@ vector<int> findPureLiterals(const SATproblem& problem, const vector<int>& assig
         }
     }
     
-    // 找出纯文字
     for (int var = 1; var <= problem.numVars; var++) {
         if (assignment[var-1] == 0) {
             if (posAppears[var] && !negAppears[var]) {
@@ -234,9 +198,11 @@ vector<int> findPureLiterals(const SATproblem& problem, const vector<int>& assig
     return pureLiterals;
 }
 
-// 递归尝试所有可能的赋值
+/**
+ * 递归尝试所有可能的赋值
+ * 使用单子句传播和纯文字消除优化搜索过程
+ */
 bool solve(const SATproblem& problem, vector<int>& assignment, int varIndex) {
-    // 检查是否有冲突
     if (checkConflict(problem, assignment)) {
         return false;
     }
@@ -252,7 +218,6 @@ bool solve(const SATproblem& problem, vector<int>& assignment, int varIndex) {
             assignment[var-1] = (lit > 0) ? 1 : -1;
             
             if (checkConflict(problem, assignment)) {
-                // 恢复赋值
                 for (auto& p : saved) {
                     assignment[p.first] = p.second;
                 }
@@ -271,12 +236,10 @@ bool solve(const SATproblem& problem, vector<int>& assignment, int varIndex) {
         }
     }
     
-    // 如果所有变量都已赋值，检查是否找到解
     if (varIndex > problem.numVars) {
         return !checkConflict(problem, assignment);
     }
     
-    // 寻找下一个未赋值变量
     int nextVar = varIndex;
     while (nextVar <= problem.numVars && assignment[nextVar-1] != 0) {
         nextVar++;
@@ -311,13 +274,12 @@ int main() {
     try {
         SATproblem problem = parseDIMACS();
         
-        // 检查问题格式
         if (problem.numVars <= 0) {
             cout << "s ERROR" << endl;
             return 1;
         }
         
-        vector<int> assignment(problem.numVars, 0); // 初始全部未赋值
+        vector<int> assignment(problem.numVars, 0);
         
         bool result = solve(problem, assignment, 1);
         
@@ -332,11 +294,9 @@ int main() {
             cout << "s UNSATISFIABLE" << endl;
         }
     } catch (const exception& e) {
-        // 处理所有未捕获的异常
         cerr << "Exception: " << e.what() << endl;
         cout << "s ERROR" << endl;
     } catch (...) {
-        // 处理未知异常
         cerr << "Unknown exception occurred" << endl;
         cout << "s ERROR" << endl;
     }

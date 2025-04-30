@@ -7,6 +7,22 @@
 - `solver.py`：主要的SAT求解器实现，基于CDCL算法
 - `to_test.py`：测试脚本，用于生成随机测试用例并与标准求解器比较结果
 - `bf_SATsolver.exe`：暴力求解器，用作结果对比的标准
+- `bf_satsolver.cpp`：暴力求解器的C++源代码
+
+## 编译暴力求解器
+
+暴力求解器使用C++编写，可以通过以下命令编译：
+
+```bash
+# 在项目根目录下执行
+g++ bf_satsolver.cpp -o bf_SATsolver.exe
+```
+
+编译环境：
+- 使用 MinGW-W64 g++ 8.1.0 (x86_64-posix-sjlj-rev0)
+- 无需额外编译参数
+
+如果需要在其他环境下编译，确保使用支持C++11或更高版本的编译器。
 
 ## 使用方法
 
